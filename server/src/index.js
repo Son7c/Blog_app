@@ -1,6 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { connectDB } from './utils/db.js';
+import authRoutes from "./routes/authRoute.js";
+import postRoutes from "./routes/postRoute.js";
+ 
 dotenv.config();
 
 const app = express();
@@ -19,6 +23,15 @@ app.get('/', (req, res) => {
   res.send('Hello, World!');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Routes
+app.use('/api/v1/users', authRoutes);
+app.use('/api/v1/posts',postRoutes)
+
+connectDB(process.env.MONGO_URI)
+.then(()=>{
+  app.listen(PORT, ()=> console.log(`Server is running on port ${PORT}`));
+})
+.catch((err)=> {
+  console.error('MongoDB error', err);
+  process.exit(1);
+})
