@@ -29,6 +29,6 @@ export const getPosts = async (req, res) => {
   }
 };
 
-export const updatePost = async (req, res) => {}
+export const updatePost = async (req, res) => { }
 
-export const deletePost = async (req, res) => {}
+export const deletePost = async (req, res) => { }

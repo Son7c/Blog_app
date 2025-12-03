@@ -1,66 +1,34 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
-// Navigation bar component - shows login/logout options and user info
+
 const Navbar = () => {
-    const navigate = useNavigate(); // Used to redirect to different pages
-    const location = useLocation(); // Gets current page URL
+    const navigate = useNavigate();
+    const location = useLocation(); 
 
-    // State: data that can change and triggers re-render when updated
-    const [user, setUser] = useState(null); // Logged-in user info
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu open/closed
-    const [scrolled, setScrolled] = useState(false); // Has user scrolled down?
-
-    // useEffect: runs code after component renders
-    // This one tracks scroll position to change navbar style
+    const {user,logout,reset}=useAuth();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false); 
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
         };
         window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll); // Cleanup
-    }, []); // [] means run once on mount
+        return () => window.removeEventListener("scroll", handleScroll); 
+    }, []); 
 
-    // Check if user is logged in by reading from localStorage
-    // localStorage: browser storage that persists even after page refresh
-    useEffect(() => {
-        const checkAuth = () => {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                setUser(JSON.parse(storedUser)); // Convert string to object
-            } else {
-                setUser(null);
-            }
-        };
-
-        checkAuth(); // Check immediately
-
-        // Listen for auth changes (login/logout in other tabs or components)
-        window.addEventListener("storage", checkAuth);
-        window.addEventListener("authChange", checkAuth);
-
-        return () => {
-            window.removeEventListener("storage", checkAuth);
-            window.removeEventListener("authChange", checkAuth);
-        };
-    }, []); // [] means run once on mount
-
-    // Handle logout: clear user data and redirect to home
     const onLogout = () => {
-        localStorage.removeItem("user"); // Remove from storage
-        setUser(null); // Update state
-        window.dispatchEvent(new Event("authChange")); // Notify other components
+        logout();
+        reset();
         toast.success("Logged out successfully!");
-        navigate("/"); // Redirect to home page
+        navigate("/");
         setMobileMenuOpen(false);
     };
 
-    // Helper to check if we're on a specific page
     const isActive = (path) => location.pathname === path;
 
-    // Render: JSX that defines what appears on screen
-    // Conditional rendering: shows different UI based on state (user logged in or not)
     return (
         <nav
             className={`fixed top-0 w-full z-50 transition-all duration-300 ${
