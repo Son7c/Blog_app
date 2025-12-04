@@ -4,22 +4,20 @@ import { Link, useNavigate } from "react-router";
 import PostModal from "../components/PostModal";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-/**
- * Home Page - Main landing page showing all blog posts
- *
- * KEY CONCEPTS:
- * - Multiple state variables to manage different parts of UI
- * - localStorage for data persistence (posts stored in browser)
- * - Array methods: filter, sort, map for displaying posts
- * - Modal pattern: click post card to open detailed view
- * - Authorization: users can only edit/delete their own posts
- */
+import API from "../axios"
+import { useAuth } from "../context/AuthContext";
+import { extractErrorMessage } from "../utils";
+import postService from "../services/postService";
+
 
 const Home = () => {
     // State for posts and loading
     const [posts, setPosts] = useState([]); // All blog posts
     const [isLoading, setIsLoading] = useState(false);
-    const [user, setUser] = useState(null); // Current logged-in user
+    const{user}=useAuth();
+    const[isError,setIsError]=useState(false);
+    const[message,setMessage]=useState("");
+    const[retry,setRetry]=useState(0);
 
     const navigate = useNavigate();
 
@@ -30,86 +28,37 @@ const Home = () => {
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [showTranslate, setShowTranslate] = useState(false);
 
-    // Check localStorage for user on mount and listen for auth changes
     useEffect(() => {
-        const checkAuth = () => {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                setUser(JSON.parse(storedUser));
-            } else {
-                setUser(null);
-            }
-        };
+        const getPosts = async () => {
+			setIsLoading(true);
+			setIsError(false);
+			setMessage("");
+			try {
+				const data = await postService.getPosts();
+				setPosts(data);
+			} catch (error) {
+				const msg = extractErrorMessage(error);
+				setMessage(msg);
+				setIsError(true);
+			} finally {
+				setIsLoading(false);
+			}
+		};
 
-        checkAuth();
-
-        // Listen for auth changes
-        window.addEventListener("authChange", checkAuth);
-        return () => window.removeEventListener("authChange", checkAuth);
-    }, []);
-
-    // Load posts from localStorage when component mounts
-    // This is like fetching from a database, but using browser storage
-    useEffect(() => {
-        setIsLoading(true);
-        try {
-            const storedPosts = localStorage.getItem("posts"); // Get JSON string
-
-            if (storedPosts) {
-                const parsedPosts = JSON.parse(storedPosts); // Convert to array
-                setPosts(parsedPosts);
-            } else {
-                setPosts([]); // No posts yet
-            }
-        } catch (error) {
-            console.error("Error loading posts:", error);
-            toast.error("Failed to load posts");
-        } finally {
-            setIsLoading(false); // Always runs, even if error
-        }
-    }, []); // Empty array = run once on mount
+		getPosts();
+    }, [retry]); // Empty array = run once on mount
 
     // Delete post handler
     // Array.filter() creates new array without the deleted post
     const handleDelete = async (id) => {
         if (window.confirm("Are you sure you want to delete this story?")) {
             try {
-                const storedUser = localStorage.getItem("user");
-                if (!storedUser) {
-                    toast.error("Please login to delete posts");
-                    return;
-                }
-                const currentUser = JSON.parse(storedUser);
-
-                // Array.find() searches for post with matching id
-                const postToDelete = posts.find((post) => post._id === id);
-
-                if (!postToDelete) {
-                    toast.error("Post not found");
-                    return;
-                }
-
-                // Authorization: verify user owns this post
-                const isOwner =
-                    postToDelete.user._id === currentUser._id ||
-                    postToDelete.user.email === currentUser.email;
-
-                if (!isOwner) {
-                    toast.error("You can only delete your own posts!");
-                    return;
-                }
-
-                // Array.filter() keeps all posts except the one being deleted
-                const updatedPosts = posts.filter((post) => post._id !== id);
-
-                setPosts(updatedPosts); // Update state
-                localStorage.setItem("posts", JSON.stringify(updatedPosts)); // Save
-
-                setSelectedPost(null); // Close modal
-                toast.success("Story deleted successfully!");
-            } catch (error) {
-                console.error("Error deleting post:", error);
-                toast.error("Failed to delete story");
+                await postService.deletePost(id);
+				setPosts(posts.filter((post) => post._id !== id));
+				setSelectedPost(null);
+				toast.success("Story deleted successfully!");
+			} catch (error) {
+				toast.error("Failed to delete story");
             }
         }
     };

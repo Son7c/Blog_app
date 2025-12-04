@@ -2,29 +2,68 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
+import {useAuth} from "../context/AuthContext"
 
-/**
- * Register Page - New user signup form
- *
- * KEY CONCEPTS:
- * - Form validation: checks if passwords match before submitting
- * - Multiple input fields managed in single state object
- * - Similar flow to Login: save user, dispatch event, redirect
- * - Local error state for client-side validation
- */
 
 const Register = () => {
-    // ADD FUNCTIONALITY HERE
-    // IT'S QUITE SIMILAR TO LOGIN PAGE
+    
+    // Form state with 4 fields
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+    });
 
-    // ADD REQUIRED STATES
+    const { name, email, password, confirmPassword } = formData;
+    const [localError, setLocalError] = useState(""); // For password mismatch
 
-    // Check if user is already logged in
+    const navigate = useNavigate();
+    const {register,isLoading,isError,isSuccess,message,user,reset}=useAuth();
+
+
+    useEffect(() => {
+        if (isError && message) {
+            toast.error(message);
+        }
+
+        if (isSuccess && user) {
+            toast.success("Account created successfully!");
+            navigate("/");
+        }
+
+        return () => {
+            reset();
+        };
+    }, [isSuccess, isError, message, user, navigate,reset]);
 
     // Handle input changes - updates state as user types
+    const onChange = (e) => {
+        setFormData((prevState) => ({
+            ...prevState,
+            [e.target.name]: e.target.value,
+        }));
+        if (localError) setLocalError(""); // Clear error when user types
+    };
 
     // Form submit - validates passwords match, then creates account
-    
+    const onSubmit = (e) => {
+        e.preventDefault(); // Prevent page reload
+
+        // Client-side validation: check if passwords match
+        if (password !== confirmPassword) {
+            const errorMsg = "Passwords do not match";
+            setLocalError(errorMsg);
+            toast.error(errorMsg);
+        } else {
+            const userData = {
+                name,
+                email,
+                password,
+            };
+            register(userData);
+        }
+    };
 
     if (isLoading) {
         return <LoadingSpinner text="Creating account..." />;

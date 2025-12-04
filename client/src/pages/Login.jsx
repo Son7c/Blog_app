@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Login Page - User authentication form
@@ -25,26 +26,8 @@ const Login = () => {
 
     const navigate = useNavigate();
     const location = useLocation(); // Contains previous page info
-    const [isLoading, setIsLoading] = useState(false);
-    const [isError, setIsError] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [message, setMessage] = useState("");
-    const [user, setUser] = useState(null);
+    const {login,isLoading,isError,isSuccess,message,user,reset}=useAuth();
 
-    // Check if user is already logged in
-    useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            const from = location.state?.from?.pathname || "/";
-            navigate(from, { replace: true });
-        }
-    }, [navigate, location]);
-
-    const reset = () => {
-        setIsError(false);
-        setIsSuccess(false);
-        setMessage("");
-    };
 
     // Handle login success/error
     useEffect(() => {
@@ -53,23 +36,15 @@ const Login = () => {
         }
 
         if (isSuccess && user) {
-            // Save user to localStorage (persists across page refreshes)
-            localStorage.setItem("user", JSON.stringify(user));
-
-            // Dispatch custom event so Navbar and other components update
-            window.dispatchEvent(new Event("authChange"));
 
             toast.success("Welcome back!");
-
-            // Redirect to page they were trying to access, or home
-            const from = location.state?.from?.pathname || "/";
-            navigate(from, { replace: true });
+            navigate("/");
         }
 
         return () => {
             reset();
         };
-    }, [isSuccess, isError, message, user, navigate, location]);
+    }, [isSuccess, isError, message, user, navigate, reset]);
 
     // Handle input changes - updates state as user types
     const onChange = (e) => {
@@ -87,19 +62,7 @@ const Login = () => {
             password,
         };
 
-        // TODO: Replace with real backend API call
-        setIsLoading(true);
-        setTimeout(() => {
-            // btoa() encodes string to base64 (simple ID generation)
-            const loggedInUser = {
-                _id: btoa(userData.email),
-                name: "Test User",
-                email: userData.email,
-            };
-            setIsLoading(false);
-            setIsSuccess(true);
-            setUser(loggedInUser);
-        }, 1500);
+        login(userData);
     };
 
     if (isLoading) {

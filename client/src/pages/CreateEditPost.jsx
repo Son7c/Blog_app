@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../components/LoadingSpinner";
+import postService from "../services/postService";
 
 /**
  * CreateEditPost Page - Form for creating new posts or editing existing ones
@@ -99,7 +100,7 @@ const CreateEditPost = () => {
 
     // Form submit handler - creates new post or updates existing one
     const onSubmit = async (e) => {
-        e.preventDefault(); // Prevent page reload
+        e.preventDefault();
         setIsSubmitted(true);
         setIsLoading(true);
 
@@ -112,52 +113,21 @@ const CreateEditPost = () => {
             }
             const user = JSON.parse(storedUser);
 
-            const storedPosts = localStorage.getItem("posts");
-            const posts = storedPosts ? JSON.parse(storedPosts) : [];
-
             if (id) {
-                // EDIT MODE: Update existing post
-                const postIndex = posts.findIndex((p) => p._id === id);
-                if (postIndex !== -1) {
-                    const post = posts[postIndex];
-                    const isOwner =
-                        post.user._id === user._id ||
-                        post.user.email === user.email;
-
-                    if (!isOwner) {
-                        toast.error("You can only edit your own posts!");
-                        setIsLoading(false);
-                        return;
-                    }
-
-                    // Spread operator keeps original data, updates changed fields
-                    posts[postIndex] = {
-                        ...posts[postIndex],
-                        title,
-                        content,
-                        updatedAt: new Date().toISOString(),
-                    };
-                }
+                // EDIT MODE (Note: Your backend updatePost is currently empty, so this might not work yet)
+                await postService.updatePost(id, {
+                    title,
+                    content
+                });
             } else {
-                // CREATE MODE: Add new post
-                const newPost = {
-                    _id: Date.now().toString(), // Simple unique ID
+                // CREATE MODE
+                // We must send 'userId' because your backend controller expects it
+                await postService.createPost({
                     title,
                     content,
-                    user: {
-                        _id: user._id || Date.now().toString(),
-                        name: user.name,
-                        email: user.email,
-                    },
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-
-                posts.unshift(newPost); // Add to beginning of array
+                    userId: user._id || user.id 
+                });
             }
-
-            // Save to localStorage (like saving to database)
-            localStorage.setItem("posts", JSON.stringify(posts));
 
             setTimeout(() => {
                 setIsLoading(false);
@@ -166,7 +136,8 @@ const CreateEditPost = () => {
         } catch (error) {
             console.error("Error saving post:", error);
             setIsLoading(false);
-            toast.error("Failed to save post");
+            // Show a specific error message if available
+            toast.error(error.response?.data?.message || "Failed to save post");
         }
     };
 
